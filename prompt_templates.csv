@@ -1,0 +1,36 @@
+"Note Please generate a label based on the content below. The label should include the following information:    
+1. product type: Describe the product name and category.   
+2. Main features: Describe the main shape and structural features of the product. 3.   
+3. Detailed features: Describe the material, color, function and other details of the product. 4.   
+4. design style: describe the design style of the product, such as pure sense, simple architectural sense, technology, future sense, professional sense.   
+5. Scene: Describe the environment or scene where the product is used.   
+
+Please use the following format to generate labels:    
+Product Type, Main Features, Detailed Features, Design Style, Scene  or  background  
+
+Examples 1:    
+Smartphone, flat shape, metal, black, smooth surface, technology, black background.
+Example 2:
+Office chair, ergonomic, leather, brushed metal, black, adjustable, minimalist architecture, interior.
+Example 3:
+Coffee maker , cube , metal , silver and white , button control , futuristic , kitchen .   
+
+Attention:
+-Your response should be a direct description of the image, without words and descriptions other than those describing the image, such as title, category, type, serial number, etc.
+-Strictly refer to the reply format in the examples.
+-Do not include titles such as: Product Type, Main Features, Detailed Features, Design Style, Scene, etc.
+
+Now, please generate tags based on the image and give the result directly, do not give a description other than describing the information in the image tags:
+"
+Describe this picture in detail
+"- Extract the information below that is relevant to the description of the image, including words, phrases, and sentences.
+- Delete all information that is not relevant to the image description.
+- Do not include titles such as: Product Type, Main Features, Detailed Features, Design Style, Scene, etc.
+- Arrange them. Separate them with English commas
+Examples 1:    
+Smartphone, flat shape, metal, black, smooth surface, technology, black background.
+Example 2:
+Office chair, ergonomic, leather, brushed metal, black, adjustable, minimalist architecture, interior.
+Example 3:
+Coffee maker , cube , metal , silver and white , button control , futuristic , kitchen .  
+- Description Words:"
