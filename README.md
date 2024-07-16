@@ -33,8 +33,11 @@ ollama-Image-tags 是一个利用 Ollama 模型为图像打标的工具，专为
     git clone https://github.com/EasonYinY/ollama-Image-tags.git
     ```
 2. 安装所需依赖：
+    安装Ollama 及 模型，推荐LLava
     安装python3.10
-    运行install_and_run.bat
+    使用以下命令安装所需的Python库：
+    pip install -r requirements.txt
+3. 运行install_and_run.bat
 
 
 ## 贡献指南
