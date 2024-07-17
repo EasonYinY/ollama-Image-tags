@@ -206,6 +206,8 @@ with gr.Blocks(css="""
 
     with gr.Tabs(elem_id="tabs"):
         with gr.TabItem("单图处理PLUS", elem_id="single-plus-tab"):
+            gr.Markdown("该功能允许用户上传一张图片，并通过选择的AI模型生成描述。用户可以选择启用精炼模型对生成的描述进行进一步处理。", elem_id="single-plus-description")
+
             image_input_plus = gr.Image(type="filepath", label="上传图片", elem_id="image-input-plus")
             prompt_input2 = gr.Textbox(label="Prompt 2", elem_id="prompt-input2")
             enable_refine_model = gr.Checkbox(label="启用精炼模型", elem_id="enable-refine-model")
@@ -267,6 +269,8 @@ with gr.Blocks(css="""
             stop_button_plus.click(stop_task)
 
         with gr.TabItem("多图处理", elem_id="multi-tab"):
+            gr.Markdown("该功能允许用户选择一个文件夹，系统会遍历该文件夹中的所有图片文件，并通过选择的AI模型生成描述。用户可以选择不同的打标方式（忽略、覆盖、加入前面、加入后面）来处理已存在的同名txt文件。", elem_id="multi-description")
+
             folder_input = gr.Textbox(label="文件夹路径", elem_id="folder-input")
             action_dropdown_folder = gr.Dropdown(label="选择打标方式", choices=["忽略", "覆盖", "加入前面", "加入后面"], elem_id="action-dropdown-folder")
             process_folder_button = gr.Button("执行", elem_id="process-folder-button")
@@ -330,6 +334,8 @@ with gr.Blocks(css="""
             stop_button_folder.click(stop_task)
 
         with gr.TabItem("多图处理PLUS", elem_id="multi-plus-tab"):
+            gr.Markdown("该功能允许用户选择一个文件夹，系统会遍历该文件夹中的所有图片文件，并通过选择的AI模型生成描述。用户可以选择启用精炼模型对生成的描述进行进一步处理，并选择是否使用图片进行处理。", elem_id="multi-plus-description")
+
             folder_input_plus = gr.Textbox(label="文件夹路径", elem_id="folder-input-plus")
             action_dropdown_folder_plus = gr.Dropdown(label="选择打标方式", choices=["忽略", "覆盖", "加入前面", "加入后面"], elem_id="action-dropdown-folder-plus")
             refine_model_dropdown = gr.Dropdown(label="选择精炼模型", choices=get_models(), elem_id="refine-model-dropdown")
@@ -477,6 +483,8 @@ with gr.Blocks(css="""
             stop_button_folder_plus.click(stop_task)
 
         with gr.TabItem("AI-Multi-Tag", elem_id="ai-multiple-tab"):
+            gr.Markdown("该功能允许用户选择一个文件夹，系统会遍历该文件夹中的所有图片文件，并通过多个选择的AI模型生成描述。用户可以选择启用多个模型进行打标，并选择是否使用精炼模型对结果进行进一步处理。", elem_id="ai-multiple-description")
+
             folder_input_multiple = gr.Textbox(label="文件夹路径", elem_id="folder-input-multiple")
             action_dropdown_multiple = gr.Dropdown(label="选择打标方式", choices=["忽略", "覆盖", "加入前面", "加入后面"], elem_id="action-dropdown-multiple")
 
@@ -672,6 +680,8 @@ with gr.Blocks(css="""
         with gr.TabItem("文字处理", elem_id="post-process-tab"):
             with gr.Tabs():
                 with gr.TabItem("添加文字"):
+                    gr.Markdown("该功能允许用户在指定文件夹中的所有txt文件中添加指定的文字。用户可以选择将文字插入到文件的最前面或最后面。", elem_id="add-text-description")
+
                     folder_txt_input = gr.Textbox(label="TXT 文件夹路径", elem_id="folder-txt-input")
                     text_input = gr.Textbox(label="输入文字", elem_id="text-input")
                     with gr.Row():
@@ -706,6 +716,8 @@ with gr.Blocks(css="""
                     insert_end_button.click(handle_txt_folder, inputs=[folder_txt_input, text_input, gr.State("end")], outputs=txt_output)
 
                 with gr.TabItem("文字替换"):
+                    gr.Markdown("该功能允许用户在指定文件夹中的所有txt文件中查找并替换指定的文字。用户可以输入查找的文字和替换的文字。", elem_id="replace-text-description")
+
                     folder_txt_replace_input = gr.Textbox(label="TXT 文件夹路径", elem_id="folder-txt-replace-input")
                     find_text_input = gr.Textbox(label="查找文字", elem_id="find-text-input")
                     replace_text_input = gr.Textbox(label="替换为", elem_id="replace-text-input")
@@ -736,6 +748,8 @@ with gr.Blocks(css="""
                     replace_button.click(handle_txt_replace, inputs=[folder_txt_replace_input, find_text_input, replace_text_input], outputs=replace_output)
 
                 with gr.TabItem("删除文件"):
+                    gr.Markdown("该功能允许用户在指定文件夹中查找包含指定文字的txt文件，并删除这些文件。用户可以选择是否区分大小写进行查找。", elem_id="delete-files-description")
+
                     folder_delete_input = gr.Textbox(label="文件夹地址输入", elem_id="folder-delete-input")
                     delete_text_input = gr.Textbox(label="包含文字", elem_id="delete-text-input")
                     case_sensitive_checkbox = gr.Checkbox(label="区分大小写", elem_id="case-sensitive-checkbox")
@@ -764,12 +778,10 @@ with gr.Blocks(css="""
                                 if file.lower().endswith('.txt'):
                                     all_txt_files += 1
                                     txt_path = os.path.join(root, file)
-                                    image_path = os.path.splitext(txt_path)[0] + os.path.splitext(txt_path)[1]
-                                    if os.path.exists(image_path):
-                                        with open(txt_path, "r", encoding="utf-8", errors="ignore") as txt_file:
-                                            content = txt_file.read()
-                                            if (case_sensitive and search_text in content) or (not case_sensitive and search_text.lower() in content.lower()):
-                                                txt_files.append(txt_path)
+                                    with open(txt_path, "r", encoding="utf-8", errors="ignore") as txt_file:
+                                        content = txt_file.read()
+                                        if (case_sensitive and search_text in content) or (not case_sensitive and search_text.lower() in content.lower()):
+                                            txt_files.append(txt_path)
                                 elif file.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
                                     all_image_files += 1
 
@@ -840,6 +852,8 @@ with gr.Blocks(css="""
                     delete_empty_txt_button.click(delete_empty_txt_files, inputs=folder_delete_input, outputs=file_count_output)
 
                 with gr.TabItem("转移文件"):
+                    gr.Markdown("该功能允许用户在指定文件夹中查找包含指定文字的txt文件，并将这些文件转移到指定的目标文件夹。用户可以选择是否同时转移同名的图片文件。", elem_id="move-files-description")
+
                     folder_move_input = gr.Textbox(label="文件夹地址输入", elem_id="folder-move-input")
                     move_target_input = gr.Textbox(label="转移地址", elem_id="move-target-input")
                     move_text_input = gr.Textbox(label="包含文字", elem_id="move-text-input")
@@ -860,12 +874,10 @@ with gr.Blocks(css="""
                             for file in files:
                                 if file.lower().endswith('.txt'):
                                     txt_path = os.path.join(root, file)
-                                    image_path = os.path.splitext(txt_path)[0] + os.path.splitext(txt_path)[1]
-                                    if os.path.exists(image_path):
-                                        with open(txt_path, "r", encoding="utf-8", errors="ignore") as txt_file:
-                                            content = txt_file.read()
-                                            if (case_sensitive and search_text in content) or (not case_sensitive and search_text.lower() in content.lower()):
-                                                txt_files.append(txt_path)
+                                    with open(txt_path, "r", encoding="utf-8", errors="ignore") as txt_file:
+                                        content = txt_file.read()
+                                        if (case_sensitive and search_text in content) or (not case_sensitive and search_text.lower() in content.lower()):
+                                            txt_files.append(txt_path)
 
                         txt_files_global = txt_files
                         return f"符合文件的数量: {len(txt_files)}\n符合要求的文件名称:\n" + "\n".join(txt_files)
@@ -891,177 +903,274 @@ with gr.Blocks(css="""
                     move_txt_button.click(lambda target_folder: move_files(txt_files_global, target_folder, move_images=False), inputs=[move_target_input], outputs=file_count_move_output)
                     move_txt_image_button.click(lambda target_folder: move_files(txt_files_global, target_folder, move_images=True), inputs=[move_target_input], outputs=file_count_move_output)
 
-        # 新增 打标后AI润色 标签页
         with gr.TabItem("打标后AI润色", elem_id="post-refine-tab"):
-            gr.Markdown("该功能可以对已有标签的图片，通过通用AI模型对其标签文字进行重新润色处理或二次加工。用户可以输入文件夹地址，系统将遍历该文件夹及其子文件夹中的图片文件和txt文件，对包含txt文件的图片进行处理。", elem_id="post-refine-description")
+            with gr.Tabs():
+                with gr.TabItem("精炼标签"):
+                    gr.Markdown("该功能允许用户选择一个文件夹，系统会遍历该文件夹及其子文件夹中的所有txt文件，并将txt文件的内容插入到Prompt 2提示词的{}内，然后使用选择的精炼模型处理，结果将覆盖原txt文件。", elem_id="refine-description")
 
-            folder_input_refine = gr.Textbox(label="文件夹路径", elem_id="folder-input-refine")
-            action_dropdown_refine = gr.Dropdown(label="选择打标方式", choices=["忽略", "覆盖", "加入前面", "加入后面"], value="覆盖", elem_id="action-dropdown-refine")
-            enable_refine_model = gr.Checkbox(label="启用精炼模型", elem_id="enable-refine-model")
-            refine_model_dropdown_refine = gr.Dropdown(label="选择精炼模型", choices=get_models(), elem_id="refine-model-dropdown-refine")
-            use_image_checkbox_refine = gr.Checkbox(label="是否识别图像", elem_id="use-image-checkbox-refine")
-            hardware_dropdown_refine = gr.Dropdown(label="选择硬件", choices=["GPU", "CPU"], value="CPU", elem_id="hardware-dropdown-refine")
-            prompt_input2_refine = gr.Textbox(label="Prompt 2", elem_id="prompt-input2-refine")
-            process_refine_button = gr.Button("执行", elem_id="process-refine-button")
-            stop_button_refine = gr.Button("停止", elem_id="stop-button-refine")
-            refine_output = gr.Textbox(label="处理结果", elem_id="refine-output", interactive=False)
+                    folder_input_refine = gr.Textbox(label="文件夹路径", elem_id="folder-input-refine")
+                    refine_model_dropdown_refine = gr.Dropdown(label="选择精炼模型", choices=get_models(), elem_id="refine-model-dropdown-refine")
+                    prompt_input2_refine = gr.Textbox(label="Prompt 2", elem_id="prompt-input2-refine")
+                    process_refine_button = gr.Button("执行", elem_id="process-refine-button")
+                    stop_button_refine = gr.Button("停止", elem_id="stop-button-refine")
+                    refine_output = gr.Textbox(label="处理结果", elem_id="refine-output", interactive=False)
 
-            def process_refine(model, prompt1, folder_path, action, refine_model, enable_refine, use_image, hardware, prompt2, concurrency):
-                global stop_flag
-                stop_flag = False
+                    def process_refine(folder_path, refine_model, prompt2, concurrency):
+                        global stop_flag
+                        stop_flag = False
 
-                if not model or not prompt1 or not folder_path:
-                    return "请选择一个模型并输入Prompt和文件夹路径。"
-                save_prompt(prompt1, prompt2, model, "打标后AI润色")
+                        if not refine_model or not prompt2 or not folder_path:
+                            return "请选择一个精炼模型并输入Prompt和文件夹路径。"
 
-                if not os.path.isdir(folder_path):
-                    return "无效的文件夹路径。"
+                        if not os.path.isdir(folder_path):
+                            return "无效的文件夹路径。"
 
-                files, txt_status = get_files_and_txt_status(folder_path)
-                results = []
+                        txt_files = []
+                        for root, _, files in os.walk(folder_path):
+                            for file in files:
+                                if file.lower().endswith('.txt'):
+                                    txt_files.append(os.path.join(root, file))
 
-                start_time = time.time()
-                total_files = len([file for file in files if txt_status[file]])  # 只计算需要润色的文件数量
-                processed_files = 0
-                last_10_times = []
-                previous_time = time.time()
+                        results = []
 
-                def process_file(file):
-                    nonlocal previous_time
-                    if stop_flag:
-                        return f"{file}: 处理被停止。"
-                    if not txt_status[file]:
-                        return f"{file}: 未找到对应的txt文件，跳过。"
+                        start_time = time.time()
+                        total_files = len(txt_files)
+                        processed_files = 0
+                        last_10_times = []
+                        previous_time = time.time()
 
-                    with open(txt_status[file], "r") as txt_file:
-                        txt_content = txt_file.read()
+                        def process_file(txt_file):
+                            nonlocal previous_time
+                            if stop_flag:
+                                return f"{txt_file}: 处理被停止。"
 
-                    if "{}" in prompt1:
-                        combined_prompt = prompt1.format(txt_content)
-                    else:
-                        combined_prompt = f"{prompt1}\n{txt_content}"
+                            with open(txt_file, "r") as file:
+                                txt_content = file.read()
 
-                    result1, elapsed_time1 = process_single_image(model, combined_prompt, file, hardware)
-
-                    if enable_refine:
-                        if use_image:
-                            with open(file, "rb") as img_file:
-                                img_base64 = base64.b64encode(img_file.read()).decode('utf-8')
-                            payload = {
-                                "model": refine_model,
-                                "prompt": f"{prompt2}\n{result1}",
-                                "images": [img_base64],
-                                "stream": False,
-                                "hardware": hardware  # 添加硬件参数
-                            }
-                        else:
-                            payload = {
-                                "model": refine_model,
-                                "prompt": f"{prompt2}\n{result1}",
-                                "stream": False,
-                                "hardware": hardware  # 添加硬件参数
-                            }
-
-                        try:
-                            response = requests.post(f"{CONFIG['OLLAMA_API_URL']}/generate", json=payload, timeout=300)
-                            response.raise_for_status()
-                            result2 = response.json().get("response", "")
-
-                            txt_path = os.path.join(os.path.dirname(file), f"{os.path.splitext(os.path.basename(file))[0]}.txt")
-                            if os.path.exists(txt_path):
-                                if action == "忽略":
-                                    return f"{file}: 文件已存在，选择忽略。", elapsed_time1
-                                elif action == "覆盖":
-                                    with open(txt_path, "w") as txt_file:
-                                        txt_file.write(result2)
-                                    return f"{file}: 处理完成，结果已覆盖到 {txt_path}", elapsed_time1
-                                elif action == "加入前面":
-                                    with open(txt_path, "r+") as txt_file:
-                                        content = txt_file.read()
-                                        txt_file.seek(0, 0)
-                                        txt_file.write(result2 + ", " + content)
-                                    return f"{file}: 处理完成，结果已加入前面到 {txt_path}", elapsed_time1
-                                elif action == "加入后面":
-                                    with open(txt_path, "a") as txt_file:
-                                        txt_file.write(", " + result2)
-                                    return f"{file}: 处理完成，结果已加入后面到 {txt_path}", elapsed_time1
+                            if "{}" in prompt2:
+                                combined_prompt = prompt2.format(txt_content)
                             else:
-                                with open(txt_path, "w") as txt_file:
-                                    txt_file.write(result2)
-                                return f"{file}: 处理完成，结果已保存到 {txt_path}", elapsed_time1
+                                combined_prompt = f"{prompt2}\n{txt_content}"
 
-                        except requests.RequestException as e:
-                            logging.error(f"Error processing image: {e}")
-                            if "Read timed out" in str(e):
-                                restart_ollama()
-                            return f"{file}: 处理失败，请检查API连接。", elapsed_time1
+                            payload = {
+                                "model": refine_model,
+                                "prompt": combined_prompt,
+                                "stream": False
+                            }
 
-                    else:
-                        txt_path = os.path.join(os.path.dirname(file), f"{os.path.splitext(os.path.basename(file))[0]}.txt")
-                        if os.path.exists(txt_path):
-                            if action == "忽略":
-                                return f"{file}: 文件已存在，选择忽略。", elapsed_time1
-                            elif action == "覆盖":
-                                with open(txt_path, "w") as txt_file:
-                                    txt_file.write(result1)
-                                return f"{file}: 处理完成，结果已覆盖到 {txt_path}", elapsed_time1
-                            elif action == "加入前面":
-                                with open(txt_path, "r+") as txt_file:
-                                    content = txt_file.read()
-                                    txt_file.seek(0, 0)
-                                    txt_file.write(result1 + ", " + content)
-                                return f"{file}: 处理完成，结果已加入前面到 {txt_path}", elapsed_time1
-                            elif action == "加入后面":
-                                with open(txt_path, "a") as txt_file:
-                                    txt_file.write(", " + result1)
-                                return f"{file}: 处理完成，结果已加入后面到 {txt_path}", elapsed_time1
-                        else:
-                            with open(txt_path, "w") as txt_file:
-                                txt_file.write(result1)
-                            return f"{file}: 处理完成，结果已保存到 {txt_path}", elapsed_time1
+                            try:
+                                response = requests.post(f"{CONFIG['OLLAMA_API_URL']}/generate", json=payload, timeout=300)
+                                response.raise_for_status()
+                                result = response.json().get("response", "")
 
-                    current_time = time.time()
-                    elapsed_time = current_time - previous_time
-                    previous_time = current_time
-                    return result1, elapsed_time
+                                with open(txt_file, "w") as file:
+                                    file.write(result)
 
-                with concurrent.futures.ThreadPoolExecutor(max_workers=int(concurrency)) as executor:
-                    future_to_file = {executor.submit(process_file, file): file for file in files if txt_status[file]}
-                    for future in concurrent.futures.as_completed(future_to_file):
-                        file = future_to_file[future]
-                        try:
-                            result, elapsed_time = future.result()
-                        except Exception as e:
-                            result = f"{file}: 处理失败，错误: {e}"
-                            elapsed_time = 0
-                        results.append(result)
+                                current_time = time.time()
+                                elapsed_time = current_time - previous_time
+                                previous_time = current_time
+                                return f"{txt_file}: 处理完成", elapsed_time
 
-                        processed_files += 1
-                        last_10_times.append(elapsed_time)
-                        if len(last_10_times) > 10:
-                            last_10_times.pop(0)
-                        avg_time_per_file = sum(last_10_times) / len(last_10_times) if last_10_times else 0
-                        remaining_time = avg_time_per_file * (total_files - processed_files)
-                        logging.info(f"当前任务耗时: {elapsed_time:.2f}秒, 进度 {processed_files}/{total_files} files. 预计剩余时间: {format_remaining_time(remaining_time)}.")
+                            except requests.RequestException as e:
+                                logging.error(f"Error processing txt: {e}")
+                                if "Read timed out" in str(e):
+                                    restart_ollama()
+                                return f"{txt_file}: 处理失败，请检查API连接。", 0
 
-                return "\n".join(results)
+                        with concurrent.futures.ThreadPoolExecutor(max_workers=int(concurrency)) as executor:
+                            future_to_file = {executor.submit(process_file, txt_file): txt_file for txt_file in txt_files}
+                            for future in concurrent.futures.as_completed(future_to_file):
+                                txt_file = future_to_file[future]
+                                try:
+                                    result, elapsed_time = future.result()
+                                except Exception as e:
+                                    result = f"{txt_file}: 处理失败，错误: {e}"
+                                    elapsed_time = 0
+                                results.append(result)
 
-            process_refine_button.click(
-                process_refine,
-                inputs=[
-                    model_dropdown,
-                    prompt_input,
-                    folder_input_refine,
-                    action_dropdown_refine,
-                    refine_model_dropdown_refine,
-                    enable_refine_model,
-                    use_image_checkbox_refine,
-                    hardware_dropdown_refine,
-                    prompt_input2_refine,
-                    concurrency_input
-                ],
-                outputs=refine_output
-            )
-            stop_button_refine.click(stop_task)
+                                processed_files += 1
+                                last_10_times.append(elapsed_time)
+                                if len(last_10_times) > 10:
+                                    last_10_times.pop(0)
+                                avg_time_per_file = sum(last_10_times) / len(last_10_times) if last_10_times else 0
+                                remaining_time = avg_time_per_file * (total_files - processed_files)
+                                logging.info(f"当前任务耗时: {elapsed_time:.2f}秒, 进度 {processed_files}/{total_files} files. 预计剩余时间: {format_remaining_time(remaining_time)}.")
+
+                        return "\n".join(results)
+
+                    process_refine_button.click(process_refine, inputs=[folder_input_refine, refine_model_dropdown_refine, prompt_input2_refine, concurrency_input], outputs=refine_output)
+                    stop_button_refine.click(stop_task)
+
+                with gr.TabItem("多模态标签润色"):
+                    gr.Markdown("该功能可以对已有标签的图片，通过通用AI模型对其标签文字进行重新润色处理或二次加工。用户可以输入文件夹地址，系统将遍历该文件夹及其子文件夹中的图片文件和txt文件，对包含txt文件的图片进行处理。", elem_id="post-refine-description")
+
+                    folder_input_multimodal_refine = gr.Textbox(label="文件夹路径", elem_id="folder-input-multimodal-refine")
+                    action_dropdown_multimodal_refine = gr.Dropdown(label="选择打标方式", choices=["忽略", "覆盖", "加入前面", "加入后面"], value="覆盖", elem_id="action-dropdown-multimodal-refine")
+                    enable_refine_model_multimodal = gr.Checkbox(label="启用精炼模型", elem_id="enable-refine-model-multimodal")
+                    refine_model_dropdown_multimodal_refine = gr.Dropdown(label="选择精炼模型", choices=get_models(), elem_id="refine-model-dropdown-multimodal-refine")
+                    use_image_checkbox_multimodal_refine = gr.Checkbox(label="是否识别图像", elem_id="use-image-checkbox-multimodal-refine")
+                    hardware_dropdown_multimodal_refine = gr.Dropdown(label="选择硬件", choices=["GPU", "CPU"], value="CPU", elem_id="hardware-dropdown-multimodal-refine")
+                    prompt_input2_multimodal_refine = gr.Textbox(label="Prompt 2", elem_id="prompt-input2-multimodal-refine")
+                    process_multimodal_refine_button = gr.Button("执行", elem_id="process-multimodal-refine-button")
+                    stop_button_multimodal_refine = gr.Button("停止", elem_id="stop-button-multimodal-refine")
+                    multimodal_refine_output = gr.Textbox(label="处理结果", elem_id="multimodal-refine-output", interactive=False)
+
+                    def process_multimodal_refine(model, prompt1, folder_path, action, refine_model, enable_refine, use_image, hardware, prompt2, concurrency):
+                        global stop_flag
+                        stop_flag = False
+
+                        if not model or not prompt1 or not folder_path:
+                            return "请选择一个模型并输入Prompt和文件夹路径。"
+                        save_prompt(prompt1, prompt2, model, "多模态标签润色")
+
+                        if not os.path.isdir(folder_path):
+                            return "无效的文件夹路径。"
+
+                        files, txt_status = get_files_and_txt_status(folder_path)
+                        results = []
+
+                        start_time = time.time()
+                        total_files = len([file for file in files if txt_status[file]])  # 只计算需要润色的文件数量
+                        processed_files = 0
+                        last_10_times = []
+                        previous_time = time.time()
+
+                        def process_file(file):
+                            nonlocal previous_time
+                            if stop_flag:
+                                return f"{file}: 处理被停止。"
+                            if not txt_status[file]:
+                                return f"{file}: 未找到对应的txt文件，跳过。"
+
+                            with open(txt_status[file], "r") as txt_file:
+                                txt_content = txt_file.read()
+
+                            if "{}" in prompt1:
+                                combined_prompt = prompt1.format(txt_content)
+                            else:
+                                combined_prompt = f"{prompt1}\n{txt_content}"
+
+                            result1, elapsed_time1 = process_single_image(model, combined_prompt, file, hardware)
+
+                            if enable_refine:
+                                if use_image:
+                                    with open(file, "rb") as img_file:
+                                        img_base64 = base64.b64encode(img_file.read()).decode('utf-8')
+                                    payload = {
+                                        "model": refine_model,
+                                        "prompt": f"{prompt2}\n{result1}",
+                                        "images": [img_base64],
+                                        "stream": False,
+                                        "hardware": hardware  # 添加硬件参数
+                                    }
+                                else:
+                                    payload = {
+                                        "model": refine_model,
+                                        "prompt": f"{prompt2}\n{result1}",
+                                        "stream": False,
+                                        "hardware": hardware  # 添加硬件参数
+                                    }
+
+                                try:
+                                    response = requests.post(f"{CONFIG['OLLAMA_API_URL']}/generate", json=payload, timeout=300)
+                                    response.raise_for_status()
+                                    result2 = response.json().get("response", "")
+
+                                    txt_path = os.path.join(os.path.dirname(file), f"{os.path.splitext(os.path.basename(file))[0]}.txt")
+                                    if os.path.exists(txt_path):
+                                        if action == "忽略":
+                                            return f"{file}: 文件已存在，选择忽略。", elapsed_time1
+                                        elif action == "覆盖":
+                                            with open(txt_path, "w") as txt_file:
+                                                txt_file.write(result2)
+                                            return f"{file}: 处理完成，结果已覆盖到 {txt_path}", elapsed_time1
+                                        elif action == "加入前面":
+                                            with open(txt_path, "r+") as txt_file:
+                                                content = txt_file.read()
+                                                txt_file.seek(0, 0)
+                                                txt_file.write(result2 + ", " + content)
+                                            return f"{file}: 处理完成，结果已加入前面到 {txt_path}", elapsed_time1
+                                        elif action == "加入后面":
+                                            with open(txt_path, "a") as txt_file:
+                                                txt_file.write(", " + result2)
+                                            return f"{file}: 处理完成，结果已加入后面到 {txt_path}", elapsed_time1
+                                    else:
+                                        with open(txt_path, "w") as txt_file:
+                                            txt_file.write(result2)
+                                        return f"{file}: 处理完成，结果已保存到 {txt_path}", elapsed_time1
+
+                                except requests.RequestException as e:
+                                    logging.error(f"Error processing image: {e}")
+                                    if "Read timed out" in str(e):
+                                        restart_ollama()
+                                    return f"{file}: 处理失败，请检查API连接。", elapsed_time1
+
+                            else:
+                                txt_path = os.path.join(os.path.dirname(file), f"{os.path.splitext(os.path.basename(file))[0]}.txt")
+                                if os.path.exists(txt_path):
+                                    if action == "忽略":
+                                        return f"{file}: 文件已存在，选择忽略。", elapsed_time1
+                                    elif action == "覆盖":
+                                        with open(txt_path, "w") as txt_file:
+                                            txt_file.write(result1)
+                                        return f"{file}: 处理完成，结果已覆盖到 {txt_path}", elapsed_time1
+                                    elif action == "加入前面":
+                                        with open(txt_path, "r+") as txt_file:
+                                            content = txt_file.read()
+                                            txt_file.seek(0, 0)
+                                            txt_file.write(result1 + ", " + content)
+                                        return f"{file}: 处理完成，结果已加入前面到 {txt_path}", elapsed_time1
+                                    elif action == "加入后面":
+                                        with open(txt_path, "a") as txt_file:
+                                            txt_file.write(", " + result1)
+                                        return f"{file}: 处理完成，结果已加入后面到 {txt_path}", elapsed_time1
+                                else:
+                                    with open(txt_path, "w") as txt_file:
+                                        txt_file.write(result1)
+                                    return f"{file}: 处理完成，结果已保存到 {txt_path}", elapsed_time1
+
+                            current_time = time.time()
+                            elapsed_time = current_time - previous_time
+                            previous_time = current_time
+                            return result1, elapsed_time
+
+                        with concurrent.futures.ThreadPoolExecutor(max_workers=int(concurrency)) as executor:
+                            future_to_file = {executor.submit(process_file, file): file for file in files if txt_status[file]}
+                            for future in concurrent.futures.as_completed(future_to_file):
+                                file = future_to_file[future]
+                                try:
+                                    result, elapsed_time = future.result()
+                                except Exception as e:
+                                    result = f"{file}: 处理失败，错误: {e}"
+                                    elapsed_time = 0
+                                results.append(result)
+
+                                processed_files += 1
+                                last_10_times.append(elapsed_time)
+                                if len(last_10_times) > 10:
+                                    last_10_times.pop(0)
+                                avg_time_per_file = sum(last_10_times) / len(last_10_times) if last_10_times else 0
+                                remaining_time = avg_time_per_file * (total_files - processed_files)
+                                logging.info(f"当前任务耗时: {elapsed_time:.2f}秒, 进度 {processed_files}/{total_files} files. 预计剩余时间: {format_remaining_time(remaining_time)}.")
+
+                        return "\n".join(results)
+
+                    process_multimodal_refine_button.click(
+                        process_multimodal_refine,
+                        inputs=[
+                            model_dropdown,
+                            prompt_input,
+                            folder_input_multimodal_refine,
+                            action_dropdown_multimodal_refine,
+                            refine_model_dropdown_multimodal_refine,
+                            enable_refine_model_multimodal,
+                            use_image_checkbox_multimodal_refine,
+                            hardware_dropdown_multimodal_refine,
+                            prompt_input2_multimodal_refine,
+                            concurrency_input
+                        ],
+                        outputs=multimodal_refine_output
+                    )
+                    stop_button_multimodal_refine.click(stop_task)
 
 demo.launch(server_port=7888)
