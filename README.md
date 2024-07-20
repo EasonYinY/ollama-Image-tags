@@ -12,6 +12,8 @@ ollama-Image-tags 是一个利用 Ollama 模型为图像打标的工具，专为
 提取码：AIDV 
 --来自百度网盘超级会员V7的分享
 
+
+
 ## 项目背景
 
 作为一个完全不会写代码的初学者，我第一次尝试用 AI 搓了一个功能比较完整的提示词反推助手。起因是兔狲大佬的打标工具，用 GPT-4 打标非常心痛，免费的模型又只有几个，开源模型效果也差强人意。每次打标完成的结果，由于开源模型的本身能力问题，总是出现各种各样的问题，直接影响到 SD 模型训练的结果。
@@ -33,6 +35,8 @@ ollama-Image-tags 是一个利用 Ollama 模型为图像打标的工具，专为
 ![image](https://github.com/user-attachments/assets/c6339bce-8e14-450f-a806-00fd1332a736)
 
 ## 如何使用
+###视频地址：
+https://www.bilibili.com/video/BV1YR8Te5EJp/?spm_id_from=333.999.0.0
 
 1. 克隆本仓库到本地：
     ```bash
