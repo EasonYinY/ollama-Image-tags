@@ -45,6 +45,9 @@ ollama-Image-tags 是一个利用 Ollama 模型为图像打标的工具，专为
     pip install -r requirements.txt
 3. 运行install_and_run.bat
 
+## 测试：
+![image](https://github.com/user-attachments/assets/300da54e-1088-4fdb-a767-b956ae2eacfd)
+
 
 ## 贡献指南
 
