@@ -1,7 +1,8 @@
-"Note Please generate a label based on the content below. The label should include the following information:    
+默认,Describe this picture in detail
+产品设计——低精度,"Note Please generate a label based on the content below. The label should include the following information:    
 1. product type: Describe the product name and category.   
-2. Main features: Describe the main shape and structural features of the product. 3.   
-3. Detailed features: Describe the material, color, function and other details of the product. 4.   
+2. Main features: Describe the main shape and structural features of the product. 
+3. Detailed features: Describe the material, color, function and other details of the product. 
 4. design style: describe the design style of the product, such as pure sense, simple architectural sense, technology, future sense, professional sense.   
 5. Scene: Describe the environment or scene where the product is used.   
 
@@ -22,8 +23,7 @@ Attention:
 
 Now, please generate tags based on the image and give the result directly, do not give a description other than describing the information in the image tags:
 "
-Describe this picture in detail
-"- Extract the information below that is relevant to the description of the image, including words, phrases, and sentences.
+产品设计——低精度_精炼,"- Extract the information below that is relevant to the description of the image, including words, phrases, and sentences.
 - Delete all information that is not relevant to the image description.
 - Do not include titles such as: Product Type, Main Features, Detailed Features, Design Style, Scene, etc.
 - Arrange them. Separate them with English commas
@@ -34,3 +34,119 @@ Office chair, ergonomic, leather, brushed metal, black, adjustable, minimalist a
 Example 3:
 Coffee maker , cube , metal , silver and white , button control , futuristic , kitchen .  
 - Description Words:"
+产品设计——中精度,"Medium Information Recognition
+ -Please generate a label based on the following. The label should include the following information:    
+ 1. product type: Describe the product name and category.  
+ 2. Main Features: Describe in detail the main shape and structural features of the product, design proportions.
+ 3. Detailed features: Describes the product's surface material and finishing process, detailed color and function, texture features, texture style, texture detail description. Recognizable parts and their design features, LED lights, handles, buttons, bases, brackets, air vents, cameras, knobs, logo content, text content, silkscreen text content and so on.
+ 4. Design style: Describe the design style of the product, such as pure sense, simple architectural sense, technological sense, futuristic sense, professional sense and so on.  And detailed description, especially the body features, line features, surface features. 5.
+ 5. scene description: a detailed description of the picture environment or scene or background, what objects, what style, what features, background color.
+ 6. Composition: Detailed description of the picture composition, picture quality, shooting angle, shooting style or lens language. For example: close-ups, perspective, top angle, etc.
+ 7. Lighting: a detailed description of the way the picture is lighted, photographic lighting, natural light, etc., as well as the picture of the reflections, shadows, projections and other details  
+
+ -Please note
+  -Your reply should be a direct description of the image, do not use words and descriptions other than the title, category, type, serial number, etc. to describe the image.
+  -Strictly refer to the response format in the example.
+  -Do not include titles, such as Product Type, Main Functions, Detailed Functions, Design Styles, Scenes, etc.
+
+ - Example 1:
+ Smartphone, flat shape, smooth curves, curved glass, matte metal, high-gloss black glass, localized matte black decorative strips, LED light at the bottom, minimalist style, architectural style, clean lines, black background, symmetrical composition, frontal view, studio environment, studio lighting, high-definition image quality, clear metallic texture, high reflectivity of glass
+ - Example 2:
+ Office chair, ergonomic, brown matte lychee grain leather, brushed matte aluminum, partial black decorative strips, adjustable, minimalist architectural style, indoor, mesh fabric, oblique camera angle, clear metallic reflections, HD quality, clear mesh surface, furniture environment, filter effect, close-ups
+ - Example 3:
+ Coffee pot, interlocking cubes, high-gloss metal, localized silver-white plastic, golden volume ratio, delicate round buttons, minimalist silhouette, futuristic style, regular lines, cylindrical wooden handle, localized texture is clear and beautiful, bright kitchen environment, clear background light.
+
+
+Now, please generate labels based on the images and give the results directly without giving any other descriptions.
+"
+产品设计——中精度_精炼,"Medium Information Refinement
+ - Extract the following information related to the picture description, including words, phrases, and sentences.
+ - Remove all information that is not relevant to the picture description without changing the original meaning. For example, titles, serial numbers, etc.
+ - Do not delete words that enhance the aesthetics of the image, e.g., delicate textures, matte metals, clear reflections, etc.
+ - As far as possible, completeness in expression will not produce singularity, e.g., the expression will be clearer and more complete with Studio light than Studio.
+ - Arrange them. Separate them with commas.
+ - Refer to the following requirements to embellish, but do not add anything extra that is not mentioned.
+  - Note Please generate a label based on the following. The label should include the following information:    
+  1. Product Type: Describe the product name and category.  
+  2. Main features: Describe in detail the main shape and structural features of the product, and the design proportions. 
+  3. Detailed Features: Describes the material and process of the product, detailed color, functional and texture details. Recognizable components and their design features, LED lights, handles, buttons, bases, stands.
+  4. Design Style: Describe the design style of the product, such as purity, simple architecture, technology, futuristic and professional.  And detailed description, especially the body features, line features, surface features.
+  5. Scene: Describe in detail the environment or scene or background in the picture.
+  6. Composition: Describe in detail the way the picture is composed and the quality of the picture.
+  7. light: a detailed description of the way the picture is lighted, photographic lighting, natural light, etc., as well as reflections, shadows, projections and other details of the picture  
+
+ - Do not include titles, such as ""product type"", ""main features"", ""detailed features"", ""design style Do not include titles such as ""Product Type"", ""Main Features"", ""Detailed Features"", ""Design Style"", ""Scene and other text itself"". You will be strictly penalized when these words appear in your output.
+
+ - Strictly follow the formatting and descriptive style of the output in the following examples
+
+ - Example 1:
+ Smartphone, flat shape, smooth curves, curved glass, matte metal, high-gloss black glass, localized matte black decorative strip, LED light at the bottom, minimalist style, architectural style, clean lines, black background, symmetrical composition, frontal view, studio environment, studio lighting, high-definition image quality, clear metallic texture, high reflectivity of glass
+ - Example 2:
+ Office chair, ergonomic, brown matte lychee grain leather, brushed matte aluminum, partial black decorative strips, adjustable, minimalist architectural style, indoor, mesh fabric, oblique camera angle, clear metallic reflections, HD quality, clear mesh surfaces, furniture environment, filter effect, partial close-ups
+ - Example 3:
+ Coffee pot, interlocking cubes, high-gloss metal, localized silver-white plastic, golden volume ratio, delicate round buttons, minimalist silhouette, futuristic style, regular lines, cylindrical wooden handle, localized texture is clear and beautiful, bright kitchen environment, clear background light.
+ - Description text:
+ {}"
+产品设计——高精度,"High-precision information recognition
+Recognize images to generate a concise label or text description including:
+
+Main content in one sentence.
+Main shape, structural features, design proportions.
+Product details: surface materials, finishing processes, detailed color, function, texture features, styles, and detail descriptions.
+Recognizable parts: LED lights, handles, buttons, bases, stands, air vents, cameras, knobs, logos, text, silkscreen text, etc.
+Design style: purity, simplicity, architecture, technology, future, professionalism, with detailed main features, curved surfaces, lines, surfaces.
+Screen environment/scene/background: objects, style, features, background color.
+Screen layout style, picture quality, shooting angle, style, camera language: close-up, perspective, top view, etc.
+Lighting: photographic lighting, natural light, reflections, shadows, projections.
+
+Examples:
+Minimalist black smartphone, flat shape, smooth curves, curved glass, matte metal, high-gloss black glass, partially matte black decorative strip, ""Apple"" printed on the bottom of the screen, LED light at the bottom, minimalist style, architectural style, clean lines, black background, symmetrical composition, front view, studio environment, Studio Spotlight, High Definition, Crisp Metallic, Glass High Reflectivity
+
+
+Directly describe the image.
+Be concise.
+Follow the example format without repeating the text.
+Do not include titles like product type, main features, etc.
+Avoid repetition.
+Only describe image content.
+Keep text under 500 characters.
+Avoid phrases like ""The image shows a"", ""It has a"", etc."
+产品设计——高精度_精度,"#High precision refining
+ - Extract the following information related to the picture description, including words, phrases, and sentences.
+ - Remove all information that is not relevant to the picture description without changing the original meaning. For example, titles, serial numbers, etc.
+ - Do not delete words that enhance the aesthetics of the image, e.g., delicate textures, matte metals, clear reflections, etc.
+ - As far as possible, completeness in expression will not produce singularity, e.g., the expression will be clearer and more complete with Studio light than Studio.
+ - Arrange them. Separate them with commas.
+ - Refer to the following requirements to embellish, but do not add anything extra that is not mentioned.
+  - Note Please generate a label based on the following. The label should include the following information:    
+1. the main content of the image in one sentence. 
+2. describe the main shape, structural features, and design proportions of the product.
+3. describe product details, including surface materials, finishing processes, detailed color and function, texture features, texture styles, and texture detail descriptions.
+4. describe the recognizable parts of the product and their design features, LED lights, handles, buttons, bases, stands, air vents, cameras, knobs, logo content, text content, silkscreen text content, etc.
+5. Describe the design style of the product, such as purity, simplicity, architecture, technology, future, professionalism, etc. and describe in detail, especially the main body. And expand the description in detail, especially the main features, curved surface features, line features, surface features.
+6. Detailed description of the screen environment or scene or background, what objects, what style, what features, background color, etc..
+7. Detailed description of the screen layout style, picture quality, shooting angle, shooting style or camera language. For example: close-up, perspective, top view, etc.
+8. a detailed description of how the picture is lit, photographic lighting, natural light, etc., and details of reflections, shadows, projections, etc., in the picture. 
+
+# Please note
+    -Your response should directly describe the image, please do not use words or descriptions other than title, category, type, serial number, etc. to describe the image. (very important)
+    - The result of the reply into may be concise.
+    - Please refer strictly to the response format in the example, but do not repeat the text of the example. (Very important)
+    - Please do not include titles such as product type, main features, detailed features, design style, scenarios, etc. (very important)
+    - Do not repeat the content of the description
+    - Do not answer anything that is not related to the content of the image. (Very important)
+    - Caution! Keep the number of text characters to 500 characters or less (very important)
+    - Do not include descriptions like ""The image shows a""; ""It has a""; ""There is "", ""The image"", ""The XXX is"", etc. They take up too many characters and are not valuable to the image description. (Very important!)
+    - Do not include titles, such as ""product type"", ""main features"", ""detailed features"", ""design style Do not include titles such as ""Product Type"", ""Main Features"", ""Detailed Features"", ""Design Style"", ""Scene and other text itself"". You will be strictly penalized when these words appear in your output.
+
+ - Strictly follow the formatting and descriptive style of the output in the following examples
+
+## Below are three different sets of example descriptions :
+## Example 1:
+Minimalist black smartphone, flat shape, smooth curves, curved glass, matte metal, high-gloss black glass, partially matte black decorative strip, ""Apple"" printed on the bottom of the screen, LED light at the bottom, minimalist style, architectural style, clean lines, black background, symmetrical composition, front view, studio environment, Studio Spotlight, High Definition, Crisp Metallic, Glass High Reflectivity
+## Example 2:
+Minimalist brown leather mesh office chair with comfortable curved surfaces, brown matte lychee grain leather, brushed matte aluminum, partial black decorative strips, adjustable, minimalist architectural style, interior, mesh fabric, oblique camera angle, clear metallic reflections, HD image quality, clear mesh surfaces, furnishing environment, filter effect, oblique perspective shot, close-ups
+## Example 3:
+Futuristic minimalist silver coffee pot, interlocking cubes, high-gloss metal, partial silver-white plastic, golden volume ratio, delicate round buttons, minimalist silhouette, futuristic style, regular lines, laser engraved ""Coffee"" on the front side, cylindrical wooden handle, clear and beautiful partial texture, bokeh in the background, bright kitchen setting, oblique perspective Shot in oblique perspective with clear background light.
+ - Description text:
+ {}"

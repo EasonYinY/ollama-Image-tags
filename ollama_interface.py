@@ -29,13 +29,11 @@ os.environ["GRADIO_ANALYTICS_ENABLED"] = "False"
 
 # 全局变量
 stop_flag = False
-txt_files_global = []
-non_utf8_files_global = []
 
 # 获取本地模型列表
 def get_models():
     try:
-        response = requests.get(f"{CONFIG['OLLAMA_API_URL']}/tags", timeout=300)
+        response = requests.get(f"{CONFIG['OLLAMA_API_URL']}/tags", timeout=120)
         response.raise_for_status()
         models = response.json().get("models", [])
         return [model["name"] for model in models]
@@ -49,7 +47,9 @@ def get_prompt_templates():
     try:
         with open(CONFIG["PROMPT_TEMPLATES_FILE"], "r") as file:
             reader = csv.reader(file)
-            templates = [row[0] for row in reader]
+            for row in reader:
+                if len(row) >= 2:
+                    templates.append({"title": row[0], "prompt": row[1]})
     except FileNotFoundError:
         logging.warning(f"{CONFIG['PROMPT_TEMPLATES_FILE']} 文件未找到")
     return templates
@@ -102,7 +102,7 @@ def process_single_image(model, prompt, image, hardware, retry_count=5):
         }
 
         start_time = time.time()
-        response = requests.post(f"{CONFIG['OLLAMA_API_URL']}/generate", json=payload, timeout=300)
+        response = requests.post(f"{CONFIG['OLLAMA_API_URL']}/generate", json=payload, timeout=120)
         response.raise_for_status()
         elapsed_time = time.time() - start_time
         result = response.json().get("response", "")
@@ -166,13 +166,125 @@ def get_files_and_txt_status(folder_path):
 
 # 获取第一个Prompt模板作为默认值
 prompt_templates = get_prompt_templates()
-default_prompt = prompt_templates[0] if prompt_templates else "Describe this picture in detail"
+default_prompt = prompt_templates[0]["prompt"] if prompt_templates else "Describe this picture in detail"
 
 # 计算剩余时间
 def format_remaining_time(seconds):
     hours, remainder = divmod(seconds, 3600)
     minutes, seconds = divmod(remainder, 60)
     return f"{int(hours)}小时 {int(minutes)}分钟 {int(seconds)}秒"
+
+# 处理文件夹中的图片
+def process_folder_images(model, prompt, folder_path, action, hardware, concurrency, refine_model=None, prompt2=None, use_image=False):
+    global stop_flag
+    stop_flag = False
+
+    if not model or not prompt or not folder_path:
+        return "请选择一个模型并输入Prompt和文件夹路径。"
+    save_prompt(prompt, prompt2 or "", model, "多图处理")
+
+    if not os.path.isdir(folder_path):
+        return "无效的文件夹路径。"
+
+    files, txt_status = get_files_and_txt_status(folder_path)
+    results = []
+
+    start_time = time.time()
+    if action == "忽略":
+        files = [file for file in files if not txt_status[file]]  # 只处理没有同名txt文件的图片
+    total_files = len(files)
+    processed_files = 0
+    last_10_times = []
+    previous_time = time.time()
+
+    def process_file(file):
+        nonlocal previous_time
+        if stop_flag:
+            return f"{file}: 处理被停止。"
+        result, elapsed_time = process_single_image_with_save(model, prompt, file, action, hardware)
+        current_time = time.time()
+        elapsed_time = current_time - previous_time
+        previous_time = current_time
+        return result, elapsed_time
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=int(concurrency)) as executor:
+        future_to_file = {executor.submit(process_file, file): file for file in files}
+        for future in concurrent.futures.as_completed(future_to_file):
+            file = future_to_file[future]
+            try:
+                result, elapsed_time = future.result()
+            except Exception as e:
+                result = f"{file}: 处理失败，错误: {e}"
+                elapsed_time = 0
+            results.append(result)
+
+            processed_files += 1
+            last_10_times.append(elapsed_time)
+            if len(last_10_times) > 10:
+                last_10_times.pop(0)
+            avg_time_per_file = sum(last_10_times) / len(last_10_times) if last_10_times else 0
+            remaining_time = avg_time_per_file * (total_files - processed_files)
+            logging.info(f"当前任务耗时: {elapsed_time:.2f}秒, 进度 {processed_files}/{total_files} files. 预计剩余时间: {format_remaining_time(remaining_time)}.")
+
+    if refine_model and prompt2:
+        txt_files = [os.path.join(os.path.dirname(file), f"{os.path.splitext(os.path.basename(file))[0]}.txt") for file in files]
+
+        def refine_file(txt_file):
+            nonlocal previous_time
+            if stop_flag:
+                return f"{txt_file}: 处理被停止。"
+
+            with open(txt_file, "r") as file:
+                txt_content = file.read()
+
+            combined_prompt = prompt2.format(txt_content) if "{}" in prompt2 else f"{prompt2}\n{txt_content}"
+
+            payload = {
+                "model": refine_model,
+                "prompt": combined_prompt,
+                "stream": False,
+                "hardware": hardware
+            }
+
+            try:
+                response = requests.post(f"{CONFIG['OLLAMA_API_URL']}/generate", json=payload, timeout=120)
+                response.raise_for_status()
+                result = response.json().get("response", "")
+
+                with open(txt_file, "w") as file:
+                    file.write(result)
+
+                current_time = time.time()
+                elapsed_time = current_time - previous_time
+                previous_time = current_time
+                return f"{txt_file}: 处理完成", elapsed_time
+
+            except requests.RequestException as e:
+                logging.error(f"Error processing txt: {e}")
+                if "Read timed out" in str(e):
+                    restart_ollama()
+                return f"{txt_file}: 处理失败，请检查API连接。", 0
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=int(concurrency)) as executor:
+            future_to_file = {executor.submit(refine_file, txt_file): txt_file for txt_file in txt_files}
+            for future in concurrent.futures.as_completed(future_to_file):
+                txt_file = future_to_file[future]
+                try:
+                    result, elapsed_time = future.result()
+                except Exception as e:
+                    result = f"{txt_file}: 处理失败，错误: {e}"
+                    elapsed_time = 0
+                results.append(result)
+
+                processed_files += 1
+                last_10_times.append(elapsed_time)
+                if len(last_10_times) > 10:
+                    last_10_times.pop(0)
+                avg_time_per_file = sum(last_10_times) / len(last_10_times) if last_10_times else 0
+                remaining_time = avg_time_per_file * (total_files - processed_files)
+                logging.info(f"当前任务耗时: {elapsed_time:.2f}秒, 进度 {processed_files}/{total_files} files. 预计剩余时间: {format_remaining_time(remaining_time)}.")
+
+    return "\n".join(results)
 
 # 创建Gradio界面
 with gr.Blocks(css="""
@@ -185,35 +297,52 @@ with gr.Blocks(css="""
     #progress-info { margin-top: 20px; }
     .red-button { background-color: red; color: white; }
     .red-button:hover { background-color: darkred; }
+    .template-preview { color: gray; font-size: 0.9em; }
+    .template-preview:hover { color: black; }
 """) as demo:
     gr.Markdown("# Ollama AI图像反推", elem_id="title")
+    gr.Markdown("### 麻瓜打标器，利用丰富的开源模型进行AI全自动打标的工具，打标偷懒作者：Eason", elem_id="title2")
+    
+    with gr.Row():
+        model_dropdown = gr.Dropdown(label="选择打标模型", choices=get_models(), elem_id="model-dropdown")
 
     with gr.Row():
-        model_dropdown = gr.Dropdown(label="选择模型", choices=get_models(), elem_id="model-dropdown")
+        prompt_template_dropdown = gr.Dropdown(label="Prompt模板选择", choices=[template["title"] for template in prompt_templates], elem_id="template-dropdown")
 
     with gr.Row():
-        prompt_input = gr.Textbox(label="Prompt 1", value=default_prompt, elem_id="prompt-input")
+        load_template_button = gr.Button("加载到打标模型提示词", size="sm", elem_id="load-template-button")
+        load_to_refine_button = gr.Button("加载到精炼模型提示词", size="sm", elem_id="load-to-refine-button")
 
     with gr.Row():
-        prompt_template_dropdown = gr.Dropdown(label="Prompt模板选择", choices=prompt_templates, elem_id="template-dropdown")
-        load_template_button = gr.Button("加载模板", size="sm", elem_id="load-template-button")
+        prompt_input = gr.Textbox(label="打标提示词", value=default_prompt, elem_id="prompt-input")
+        prompt_input2 = gr.Textbox(label="精炼提示词", elem_id="prompt-input2")
+       
+    with gr.Row():
         concurrency_input = gr.Number(label="并发数量", value=4, precision=0, elem_id="concurrency-input")
 
-        def load_template(template):
-            return template
+    def load_template(template_title):
+        for template in prompt_templates:
+            if template["title"] == template_title:
+                return template["prompt"]
+        return ""
 
-        load_template_button.click(load_template, inputs=prompt_template_dropdown, outputs=prompt_input)
+    load_template_button.click(lambda title: gr.update(value=load_template(title)), inputs=prompt_template_dropdown, outputs=prompt_input)
+    load_to_refine_button.click(lambda title: gr.update(value=load_template(title)), inputs=prompt_template_dropdown, outputs=prompt_input2)
 
     with gr.Tabs(elem_id="tabs"):
         with gr.TabItem("单图处理PLUS", elem_id="single-plus-tab"):
             gr.Markdown("该功能允许用户上传一张图片，并通过选择的AI模型生成描述。用户可以选择启用精炼模型对生成的描述进行进一步处理。", elem_id="single-plus-description")
 
             image_input_plus = gr.Image(type="filepath", label="上传图片", elem_id="image-input-plus")
-            prompt_input2 = gr.Textbox(label="Prompt 2", elem_id="prompt-input2")
-            enable_refine_model = gr.Checkbox(label="启用精炼模型", elem_id="enable-refine-model")
-            refine_model_dropdown = gr.Dropdown(label="选择精炼模型", choices=get_models(), elem_id="refine-model-dropdown")
-            use_image_checkbox = gr.Checkbox(label="是否识别图像", elem_id="use-image-checkbox")
-            hardware_dropdown = gr.Dropdown(label="选择硬件", choices=["GPU", "CPU"], value="CPU", elem_id="hardware-dropdown")
+            
+            with gr.Row() :
+                enable_refine_model = gr.Checkbox(label="启用精炼模型", elem_id="enable-refine-model")
+            with gr.Row() :
+                refine_model_dropdown = gr.Dropdown(label="选择精炼模型", choices=get_models(), elem_id="refine-model-dropdown")
+                hardware_dropdown = gr.Dropdown(label="选择硬件", choices=["GPU", "CPU"], value="GPU", elem_id="hardware-dropdown")
+            with gr.Row() :
+                use_image_checkbox = gr.Checkbox(label="是否识别图像", elem_id="use-image-checkbox")
+            
             process_button_plus = gr.Button("执行", elem_id="process-button-plus")
             stop_button_plus = gr.Button("停止", elem_id="stop-button-plus")
             single_output1 = gr.Textbox(label="处理结果 1", elem_id="single-output1")
@@ -249,7 +378,7 @@ with gr.Blocks(css="""
                         }
 
                     try:
-                        response = requests.post(f"{CONFIG['OLLAMA_API_URL']}/generate", json=payload, timeout=300)
+                        response = requests.post(f"{CONFIG['OLLAMA_API_URL']}/generate", json=payload, timeout=120)
                         response.raise_for_status()
                         result2 = response.json().get("response", "")
                         return result1, result2
@@ -272,218 +401,31 @@ with gr.Blocks(css="""
             gr.Markdown("该功能允许用户选择一个文件夹，系统会遍历该文件夹中的所有图片文件，并通过选择的AI模型生成描述。用户可以选择不同的打标方式（忽略、覆盖、加入前面、加入后面）来处理已存在的同名txt文件。", elem_id="multi-description")
 
             folder_input = gr.Textbox(label="文件夹路径", elem_id="folder-input")
-            action_dropdown_folder = gr.Dropdown(label="选择打标方式", choices=["忽略", "覆盖", "加入前面", "加入后面"], elem_id="action-dropdown-folder")
+            action_dropdown_folder = gr.Dropdown(label="选择打标方式", choices=["忽略", "覆盖", "加入前面", "加入后面"], value="忽略", elem_id="action-dropdown-folder")
             process_folder_button = gr.Button("执行", elem_id="process-folder-button")
             stop_button_folder = gr.Button("停止", elem_id="stop-button-folder")
             folder_output = gr.Textbox(label="处理结果", elem_id="folder-output", interactive=False)
 
-            def process_folder(model, prompt, folder_path, action, hardware, concurrency):
-                global stop_flag
-                stop_flag = False
-
-                if not model or not prompt or not folder_path:
-                    return "请选择一个模型并输入Prompt和文件夹路径。"
-                save_prompt(prompt, "", model, "多图处理")
-
-                if not os.path.isdir(folder_path):
-                    return "无效的文件夹路径。"
-
-                files, txt_status = get_files_and_txt_status(folder_path)
-                results = []
-
-                start_time = time.time()
-                total_files = len([file for file in files if not txt_status[file]])  # 只计算需要打标的文件数量
-                processed_files = 0
-                last_10_times = []
-                previous_time = time.time()
-
-                def process_file(file):
-                    nonlocal previous_time
-                    if stop_flag:
-                        return f"{file}: 处理被停止。"
-                    if txt_status[file] and action == "忽略":
-                        return f"{file}: 文件已存在，选择忽略。"
-                    result, elapsed_time = process_single_image_with_save(model, prompt, file, action, hardware)
-                    current_time = time.time()
-                    elapsed_time = current_time - previous_time
-                    previous_time = current_time
-                    return result, elapsed_time
-
-                with concurrent.futures.ThreadPoolExecutor(max_workers=int(concurrency)) as executor:
-                    future_to_file = {executor.submit(process_file, file): file for file in files if not txt_status[file]}
-                    for future in concurrent.futures.as_completed(future_to_file):
-                        file = future_to_file[future]
-                        try:
-                            result, elapsed_time = future.result()
-                        except Exception as e:
-                            result = f"{file}: 处理失败，错误: {e}"
-                            elapsed_time = 0
-                        results.append(result)
-
-                        processed_files += 1
-                        last_10_times.append(elapsed_time)
-                        if len(last_10_times) > 10:
-                            last_10_times.pop(0)
-                        avg_time_per_file = sum(last_10_times) / len(last_10_times) if last_10_times else 0
-                        remaining_time = avg_time_per_file * (total_files - processed_files)
-                        logging.info(f"当前任务耗时: {elapsed_time:.2f}秒, 进度 {processed_files}/{total_files} files. 预计剩余时间: {format_remaining_time(remaining_time)}.")
-
-                return "\n".join(results)
-
-            process_folder_button.click(process_folder, inputs=[model_dropdown, prompt_input, folder_input, action_dropdown_folder, hardware_dropdown, concurrency_input], outputs=folder_output)
+            process_folder_button.click(process_folder_images, inputs=[model_dropdown, prompt_input, folder_input, action_dropdown_folder, gr.State("GPU"), concurrency_input], outputs=folder_output)
             stop_button_folder.click(stop_task)
 
         with gr.TabItem("多图处理PLUS", elem_id="multi-plus-tab"):
-            gr.Markdown("该功能允许用户选择一个文件夹，系统会遍历该文件夹中的所有图片文件，并通过选择的AI模型生成描述。用户可以选择启用精炼模型对生成的描述进行进一步处理，并选择是否使用图片进行处理。", elem_id="multi-plus-description")
+            gr.Markdown("选择一个文件夹，会遍历该文件夹中的所有图片文件，执行后，先通过选择的AI模型整体生成一遍描述，存在本地目录，再将该描述返回给精炼模型进行二次处理，对文本精度进行多一轮的保证。", elem_id="multi-plus-description")
 
             folder_input_plus = gr.Textbox(label="文件夹路径", elem_id="folder-input-plus")
             action_dropdown_folder_plus = gr.Dropdown(label="选择打标方式", choices=["忽略", "覆盖", "加入前面", "加入后面"], elem_id="action-dropdown-folder-plus")
-            refine_model_dropdown = gr.Dropdown(label="选择精炼模型", choices=get_models(), elem_id="refine-model-dropdown")
-            use_image_checkbox = gr.Checkbox(label="是否识别图像", elem_id="use-image-checkbox")
-            hardware_dropdown = gr.Dropdown(label="选择硬件", choices=["GPU", "CPU"], value="CPU", elem_id="hardware-dropdown")
-            prompt_input2_plus = gr.Textbox(label="Prompt 2", elem_id="prompt-input2-plus")
+            refine_model_dropdown_plus = gr.Dropdown(label="选择精炼模型", choices=get_models(), elem_id="refine-model-dropdown-plus")
+            use_image_checkbox_plus = gr.Checkbox(label="是否识别图像", elem_id="use-image-checkbox-plus")
+            hardware_dropdown_plus = gr.Dropdown(label="选择硬件", choices=["GPU", "CPU"], value="GPU", elem_id="hardware-dropdown-plus")
             process_folder_button_plus = gr.Button("执行", elem_id="process-folder-button-plus")
             stop_button_folder_plus = gr.Button("停止", elem_id="stop-button-folder-plus")
             folder_output_plus = gr.Textbox(label="处理结果", elem_id="folder-output-plus", interactive=False)
 
-            def process_folder_plus(model, prompt1, prompt2, folder_path, action, refine_model, use_image, hardware, concurrency):
-                global stop_flag
-                stop_flag = False
-
-                if not model or not prompt1 or not folder_path:
-                    return "请选择一个模型并输入Prompt和文件夹路径。"
-                save_prompt(prompt1, prompt2, model, "多图处理PLUS")
-
-                if not os.path.isdir(folder_path):
-                    return "无效的文件夹路径。"
-
-                files, txt_status = get_files_and_txt_status(folder_path)
-                results = []
-
-                start_time = time.time()
-                total_files = len([file for file in files if not txt_status[file]])  # 只计算需要打标的文件数量
-                processed_files = 0
-                last_10_times = []
-                previous_time = time.time()
-
-                def process_file(file):
-                    nonlocal previous_time
-                    if stop_flag:
-                        return f"{file}: 处理被停止。"
-                    if txt_status[file] and action == "忽略":
-                        return f"{file}: 文件已存在，选择忽略。"
-
-                    result1, elapsed_time1 = process_single_image(model, prompt1, file, hardware)
-
-                    if enable_refine_model:
-                        combined_prompt = prompt2.format(result1)
-                        if use_image:
-                            with open(file, "rb") as img_file:
-                                img_base64 = base64.b64encode(img_file.read()).decode('utf-8')
-                            payload = {
-                                "model": refine_model,
-                                "prompt": combined_prompt,
-                                "images": [img_base64],
-                                "stream": False,
-                                "hardware": hardware
-                            }
-                        else:
-                            payload = {
-                                "model": refine_model,
-                                "prompt": combined_prompt,
-                                "stream": False,
-                                "hardware": hardware
-                            }
-
-                        try:
-                            response = requests.post(f"{CONFIG['OLLAMA_API_URL']}/generate", json=payload, timeout=300)
-                            response.raise_for_status()
-                            result2 = response.json().get("response", "")
-
-                            txt_path = os.path.join(os.path.dirname(file), f"{os.path.splitext(os.path.basename(file))[0]}.txt")
-                            if os.path.exists(txt_path):
-                                if action == "忽略":
-                                    return f"{file}: 文件已存在，选择忽略。", elapsed_time1
-                                elif action == "覆盖":
-                                    with open(txt_path, "w") as txt_file:
-                                        txt_file.write(result2)
-                                    return f"{file}: 处理完成，结果已覆盖到 {txt_path}", elapsed_time1
-                                elif action == "加入前面":
-                                    with open(txt_path, "r+") as txt_file:
-                                        content = txt_file.read()
-                                        txt_file.seek(0, 0)
-                                        txt_file.write(result2 + ", " + content)
-                                    return f"{file}: 处理完成，结果已加入前面到 {txt_path}", elapsed_time1
-                                elif action == "加入后面":
-                                    with open(txt_path, "a") as txt_file:
-                                        txt_file.write(", " + result2)
-                                    return f"{file}: 处理完成，结果已加入后面到 {txt_path}", elapsed_time1
-                            else:
-                                with open(txt_path, "w") as txt_file:
-                                    txt_file.write(result2)
-                                return f"{file}: 处理完成，结果已保存到 {txt_path}", elapsed_time1
-
-                        except requests.RequestException as e:
-                            logging.error(f"Error processing image: {e}")
-                            if "Read timed out" in str(e):
-                                restart_ollama()
-                            return f"{file}: 处理失败，请检查API连接。", elapsed_time1
-
-                    else:
-                        txt_path = os.path.join(os.path.dirname(file), f"{os.path.splitext(os.path.basename(file))[0]}.txt")
-                        if os.path.exists(txt_path):
-                            if action == "忽略":
-                                return f"{file}: 文件已存在，选择忽略。", elapsed_time1
-                            elif action == "覆盖":
-                                with open(txt_path, "w") as txt_file:
-                                    txt_file.write(result1)
-                                return f"{file}: 处理完成，结果已覆盖到 {txt_path}", elapsed_time1
-                            elif action == "加入前面":
-                                with open(txt_path, "r+") as txt_file:
-                                    content = txt_file.read()
-                                    txt_file.seek(0, 0)
-                                    txt_file.write(result1 + ", " + content)
-                                return f"{file}: 处理完成，结果已加入前面到 {txt_path}", elapsed_time1
-                            elif action == "加入后面":
-                                with open(txt_path, "a") as txt_file:
-                                    txt_file.write(", " + result1)
-                                return f"{file}: 处理完成，结果已加入后面到 {txt_path}", elapsed_time1
-                        else:
-                            with open(txt_path, "w") as txt_file:
-                                txt_file.write(result1)
-                            return f"{file}: 处理完成，结果已保存到 {txt_path}", elapsed_time1
-
-                    current_time = time.time()
-                    elapsed_time = current_time - previous_time
-                    previous_time = current_time
-                    return result1, elapsed_time
-
-                with concurrent.futures.ThreadPoolExecutor(max_workers=int(concurrency)) as executor:
-                    future_to_file = {executor.submit(process_file, file): file for file in files if not txt_status[file]}
-                    for future in concurrent.futures.as_completed(future_to_file):
-                        file = future_to_file[future]
-                        try:
-                            result, elapsed_time = future.result()
-                        except Exception as e:
-                            result = f"{file}: 处理失败，错误: {e}"
-                            elapsed_time = 0
-                        results.append(result)
-
-                        processed_files += 1
-                        last_10_times.append(elapsed_time)
-                        if len(last_10_times) > 10:
-                            last_10_times.pop(0)
-                        avg_time_per_file = sum(last_10_times) / len(last_10_times) if last_10_times else 0
-                        remaining_time = avg_time_per_file * (total_files - processed_files)
-                        logging.info(f"当前任务耗时: {elapsed_time:.2f}秒, 进度 {processed_files}/{total_files} files. 预计剩余时间: {format_remaining_time(remaining_time)}.")
-
-                return "\n".join(results)
-
-            process_folder_button_plus.click(process_folder_plus, inputs=[model_dropdown, prompt_input, prompt_input2_plus, folder_input_plus, action_dropdown_folder_plus, refine_model_dropdown, use_image_checkbox, hardware_dropdown, concurrency_input], outputs=folder_output_plus)
+            process_folder_button_plus.click(process_folder_images, inputs=[model_dropdown, prompt_input, folder_input_plus, action_dropdown_folder_plus, hardware_dropdown_plus, concurrency_input, refine_model_dropdown_plus, prompt_input2, use_image_checkbox_plus], outputs=folder_output_plus)
             stop_button_folder_plus.click(stop_task)
 
         with gr.TabItem("AI-Multi-Tag", elem_id="ai-multiple-tab"):
-            gr.Markdown("该功能允许用户选择一个文件夹，系统会遍历该文件夹中的所有图片文件，并通过多个选择的AI模型生成描述。用户可以选择启用多个模型进行打标，并选择是否使用精炼模型对结果进行进一步处理。", elem_id="ai-multiple-description")
+            gr.Markdown("该功能为实现性功能，选择一个文件夹，并通过多个选择的AI模型生成描述，再将其给到精炼模型对结果进行进一步处理，增加描述的丰富度。", elem_id="ai-multiple-description")
 
             folder_input_multiple = gr.Textbox(label="文件夹路径", elem_id="folder-input-multiple")
             action_dropdown_multiple = gr.Dropdown(label="选择打标方式", choices=["忽略", "覆盖", "加入前面", "加入后面"], elem_id="action-dropdown-multiple")
@@ -503,8 +445,7 @@ with gr.Blocks(css="""
             enable_refine_model_multiple = gr.Checkbox(label="启用精炼模型", elem_id="enable-refine-model-multiple")
             refine_model_dropdown_multiple = gr.Dropdown(label="选择精炼模型", choices=get_models(), elem_id="refine-model-dropdown-multiple")
             use_image_checkbox_multiple = gr.Checkbox(label="是否识别图像", elem_id="use-image-checkbox-multiple")
-            hardware_dropdown_multiple = gr.Dropdown(label="选择硬件", choices=["GPU", "CPU"], value="CPU", elem_id="hardware-dropdown-multiple")
-            prompt_input2_multiple = gr.Textbox(label="Prompt 2", elem_id="prompt-input2-multiple")
+            hardware_dropdown_multiple = gr.Dropdown(label="选择硬件", choices=["GPU", "CPU"], value="GPU", elem_id="hardware-dropdown-multiple")
             process_folder_button_multiple = gr.Button("执行", elem_id="process-folder-button-multiple")
             stop_button_folder_multiple = gr.Button("停止", elem_id="stop-button-folder-multiple")
             folder_output_multiple = gr.Textbox(label="处理结果", elem_id="folder-output-multiple", interactive=False)
@@ -525,7 +466,9 @@ with gr.Blocks(css="""
                 results = []
 
                 start_time = time.time()
-                total_files = len([file for file in files if not txt_status[file]])  # 只计算需要打标的文件数量
+                if action == "忽略":
+                    files = [file for file in files if not txt_status[file]]  # 只处理没有同名txt文件的图片
+                total_files = len(files)
                 processed_files = 0
                 last_10_times = []
                 previous_time = time.time()
@@ -570,7 +513,7 @@ with gr.Blocks(css="""
                             }
 
                         try:
-                            response = requests.post(f"{CONFIG['OLLAMA_API_URL']}/generate", json=payload, timeout=300)
+                            response = requests.post(f"{CONFIG['OLLAMA_API_URL']}/generate", json=payload, timeout=120)
                             response.raise_for_status()
                             result2 = response.json().get("response", "")
 
@@ -670,7 +613,7 @@ with gr.Blocks(css="""
                     enable_refine_model_multiple,
                     use_image_checkbox_multiple,
                     hardware_dropdown_multiple,
-                    prompt_input2_multiple,
+                    prompt_input2,
                     concurrency_input
                 ],
                 outputs=folder_output_multiple
@@ -906,16 +849,16 @@ with gr.Blocks(css="""
         with gr.TabItem("打标后AI润色", elem_id="post-refine-tab"):
             with gr.Tabs():
                 with gr.TabItem("精炼标签"):
-                    gr.Markdown("该功能允许用户选择一个文件夹，系统会遍历该文件夹及其子文件夹中的所有txt文件，并将txt文件的内容插入到Prompt 2提示词的{}内，然后使用选择的精炼模型处理，结果将覆盖原txt文件。", elem_id="refine-description")
+                    gr.Markdown("对已近有标签的图片进行文字精炼或润色，比如WD14或者“多图处理”等打完一次标的文件。但是仅对文字进行优化，不会再次识别图片。选择一个文件夹，系统会遍历该文件夹及其子文件夹中的所有txt文件，并将txt文件的内容插入到精炼提示词的{}内，然后使用选择的精炼模型处理，结果将覆盖原txt文件。", elem_id="refine-description")
 
                     folder_input_refine = gr.Textbox(label="文件夹路径", elem_id="folder-input-refine")
                     refine_model_dropdown_refine = gr.Dropdown(label="选择精炼模型", choices=get_models(), elem_id="refine-model-dropdown-refine")
-                    prompt_input2_refine = gr.Textbox(label="Prompt 2", elem_id="prompt-input2-refine")
+                    hardware_dropdown_refine = gr.Dropdown(label="选择硬件", choices=["GPU", "CPU"], value="GPU", elem_id="hardware-dropdown-refine")
                     process_refine_button = gr.Button("执行", elem_id="process-refine-button")
                     stop_button_refine = gr.Button("停止", elem_id="stop-button-refine")
                     refine_output = gr.Textbox(label="处理结果", elem_id="refine-output", interactive=False)
 
-                    def process_refine(folder_path, refine_model, prompt2, concurrency):
+                    def process_refine(folder_path, refine_model, prompt2, hardware, concurrency):
                         global stop_flag
                         stop_flag = False
 
@@ -947,19 +890,17 @@ with gr.Blocks(css="""
                             with open(txt_file, "r") as file:
                                 txt_content = file.read()
 
-                            if "{}" in prompt2:
-                                combined_prompt = prompt2.format(txt_content)
-                            else:
-                                combined_prompt = f"{prompt2}\n{txt_content}"
+                            combined_prompt = prompt2.format(txt_content) if "{}" in prompt2 else f"{prompt2}\n{txt_content}"
 
                             payload = {
                                 "model": refine_model,
                                 "prompt": combined_prompt,
-                                "stream": False
+                                "stream": False,
+                                "hardware": hardware  # 使用指定的硬件参数
                             }
 
                             try:
-                                response = requests.post(f"{CONFIG['OLLAMA_API_URL']}/generate", json=payload, timeout=300)
+                                response = requests.post(f"{CONFIG['OLLAMA_API_URL']}/generate", json=payload, timeout=120)
                                 response.raise_for_status()
                                 result = response.json().get("response", "")
 
@@ -998,19 +939,18 @@ with gr.Blocks(css="""
 
                         return "\n".join(results)
 
-                    process_refine_button.click(process_refine, inputs=[folder_input_refine, refine_model_dropdown_refine, prompt_input2_refine, concurrency_input], outputs=refine_output)
+                    process_refine_button.click(process_refine, inputs=[folder_input_refine, refine_model_dropdown_refine, prompt_input2, hardware_dropdown_refine, concurrency_input], outputs=refine_output)
                     stop_button_refine.click(stop_task)
 
                 with gr.TabItem("多模态标签润色"):
-                    gr.Markdown("该功能可以对已有标签的图片，通过通用AI模型对其标签文字进行重新润色处理或二次加工。用户可以输入文件夹地址，系统将遍历该文件夹及其子文件夹中的图片文件和txt文件，对包含txt文件的图片进行处理。", elem_id="post-refine-description")
+                    gr.Markdown("与精炼标签功能不同，该功能可以对已有标签的图片，通过通用AI模型对其标签文字和图片同时识别并进行重新润色处理或二次加工。用户可以输入文件夹地址，系统将遍历该文件夹及其子文件夹中的图片文件和txt文件，对包含txt文件的图片进行处理。", elem_id="post-refine-description")
 
                     folder_input_multimodal_refine = gr.Textbox(label="文件夹路径", elem_id="folder-input-multimodal-refine")
                     action_dropdown_multimodal_refine = gr.Dropdown(label="选择打标方式", choices=["忽略", "覆盖", "加入前面", "加入后面"], value="覆盖", elem_id="action-dropdown-multimodal-refine")
                     enable_refine_model_multimodal = gr.Checkbox(label="启用精炼模型", elem_id="enable-refine-model-multimodal")
                     refine_model_dropdown_multimodal_refine = gr.Dropdown(label="选择精炼模型", choices=get_models(), elem_id="refine-model-dropdown-multimodal-refine")
                     use_image_checkbox_multimodal_refine = gr.Checkbox(label="是否识别图像", elem_id="use-image-checkbox-multimodal-refine")
-                    hardware_dropdown_multimodal_refine = gr.Dropdown(label="选择硬件", choices=["GPU", "CPU"], value="CPU", elem_id="hardware-dropdown-multimodal-refine")
-                    prompt_input2_multimodal_refine = gr.Textbox(label="Prompt 2", elem_id="prompt-input2-multimodal-refine")
+                    hardware_dropdown_multimodal_refine = gr.Dropdown(label="选择硬件", choices=["GPU", "CPU"], value="GPU", elem_id="hardware-dropdown-multimodal-refine")
                     process_multimodal_refine_button = gr.Button("执行", elem_id="process-multimodal-refine-button")
                     stop_button_multimodal_refine = gr.Button("停止", elem_id="stop-button-multimodal-refine")
                     multimodal_refine_output = gr.Textbox(label="处理结果", elem_id="multimodal-refine-output", interactive=False)
@@ -1045,10 +985,7 @@ with gr.Blocks(css="""
                             with open(txt_status[file], "r") as txt_file:
                                 txt_content = txt_file.read()
 
-                            if "{}" in prompt1:
-                                combined_prompt = prompt1.format(txt_content)
-                            else:
-                                combined_prompt = f"{prompt1}\n{txt_content}"
+                            combined_prompt = prompt1.format(txt_content) if "{}" in prompt1 else f"{prompt1}\n{txt_content}"
 
                             result1, elapsed_time1 = process_single_image(model, combined_prompt, file, hardware)
 
@@ -1072,7 +1009,7 @@ with gr.Blocks(css="""
                                     }
 
                                 try:
-                                    response = requests.post(f"{CONFIG['OLLAMA_API_URL']}/generate", json=payload, timeout=300)
+                                    response = requests.post(f"{CONFIG['OLLAMA_API_URL']}/generate", json=payload, timeout=120)
                                     response.raise_for_status()
                                     result2 = response.json().get("response", "")
 
@@ -1166,7 +1103,7 @@ with gr.Blocks(css="""
                             enable_refine_model_multimodal,
                             use_image_checkbox_multimodal_refine,
                             hardware_dropdown_multimodal_refine,
-                            prompt_input2_multimodal_refine,
+                            prompt_input2,
                             concurrency_input
                         ],
                         outputs=multimodal_refine_output
